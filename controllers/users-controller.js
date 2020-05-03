@@ -1,5 +1,6 @@
 const uuid = require("uuid/dist/v4");
-const {validationResult} = require('express-validator');
+const { validationResult } = require("express-validator");
+const User = require("../models/user");
 
 let DUMMY_DATA = [
   {
@@ -14,39 +15,56 @@ const getUsers = (req, res, next) => {
   res.json({ users: DUMMY_DATA });
 };
 
-const signup = (req, res, next) => {
-    const errors = validationResult(req);
+const signup = async (req, res, next) => {
+  const errors = validationResult(req);
 
-  if(!errors.isEmpty()){
-    const error = new Error('Invalid Input');
-    throw error;
+  if (!errors.isEmpty()) {
+    const error = new Error("Invalid Input");
+    return next(error);
   }
-  const { name, email, password } = req.body;
-    const hasUser =  DUMMY_DATA.find(u => u.email === email);
-    if(hasUser){
-        const error = new Error('User already Exists');
-        throw error;
-    }
+  const { name, email, password, places} = req.body;
+  let existingUser;
+  try {
+    existingUser = await User.findOne({ email: email });
+  } catch (error) {
+    return next(error);
+  }
 
+  if (existingUser) {
+    const error = new Error("User already Exists");
+    return next(error);
+  }
 
-  const createdUser = {
-    id: uuid(),
+  const createdUser = new User({
     name,
     email,
+    image:"https://vignette.wikia.nocookie.net/godofwar/images/b/b3/Kratos_Mugshot.jpg/revision/latest?cb=20180826024705",
     password,
-  };
-  DUMMY_DATA.push(createdUser);
-  res.status(201).json({ user: createdUser });
+    places,
+  });
+
+  try {
+    await createdUser.save();
+  } catch (error) {
+    return next(error);
+  }
+
+  res.status(201).json({ user: createdUser.toObject({getters:true}) });
 };
 
-const login = (req, res, next) => {
-    
+const login = async (req, res, next) => {
   const { email, password } = req.body;
-  const identifiedUser = DUMMY_DATA.find((user) => user.email === email);
-  if (!identifiedUser || identifiedUser.password === password) {
+  let existingUser;
+  try {
+    existingUser = await User.findOne({ email: email });
+  } catch (error) {
+    console.log('error in find user');
+    return next(error);
+  }
+  if (!existingUser || existingUser.password !== password) {
     const error = new Error("User not found, Please check credentials");
     error.code = 401;
-    throw error;
+    return next(error);
   }
   res.json({ message: "Logged In" });
 };
