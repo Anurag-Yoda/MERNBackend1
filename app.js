@@ -26,7 +26,9 @@ app.use((error, req, res, next) => {
 });
 
 mongoose
-  .connect('mongodb+srv://anurag:Kehkelunga_786@cluster0-sn3p1.mongodb.net/test?retryWrites=true&w=majority')
+  .connect(
+    "mongodb+srv://anurag:Kehkelunga_786@cluster0-sn3p1.mongodb.net/test?retryWrites=true&w=majority"
+  )
   .then(() => {
     console.log("Mongo Connected");
     app.listen(5000);

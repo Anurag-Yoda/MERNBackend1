@@ -2,15 +2,7 @@ const uuid = require("uuid/dist/v4");
 const { validationResult } = require("express-validator");
 const Place = require("../models/place");
 const User = require("../models/user");
-const mongoose = require('mongoose');
-
-let DUMMY_DATA = [
-  {
-    id: "p1",
-    title: "Taj mahal",
-    creator: "u1",
-  },
-];
+const mongoose = require("mongoose");
 
 const getPlaceById = async (req, res, next) => {
   const placeId = req.params.pid;
@@ -34,8 +26,7 @@ const getPlacesByUserId = async (req, res, next) => {
   let places;
 
   try {
-    places = await Place.find({ creator : userId}
-    );
+    places = await Place.find({ creator: userId });
     console.log(places);
   } catch (error) {
     return next(error);
@@ -47,7 +38,7 @@ const getPlacesByUserId = async (req, res, next) => {
     return next(error);
   }
 
-  res.json({ place: places.map(place => place.toObject({getters:true})) });
+  res.json({ place: places.map((place) => place.toObject({ getters: true })) });
 };
 
 const createPlace = async (req, res, next) => {
@@ -68,23 +59,23 @@ const createPlace = async (req, res, next) => {
       "https://cdn.britannica.com/82/183382-050-D832EC3A/Detail-head-crown-Statue-of-Liberty-New.jpg",
     creator,
   });
- let user;
+  let user;
   try {
     user = await User.findById(creator);
   } catch (error) {
     return next(error);
   }
-  if(!user){
-    const error = new Error('Could not find the user for Provided it');
+  if (!user) {
+    const error = new Error("Could not find the user for Provided it");
     return next(error);
   }
 
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
-    await createdPlace.save({session : sess});
+    await createdPlace.save({ session: sess });
     user.places.push(createdPlace);
-    await user.save({session:sess});
+    await user.save({ session: sess });
     await sess.commitTransaction();
   } catch (error) {
     console.log(error);
@@ -110,7 +101,7 @@ const updatePlace = async (req, res, next) => {
   try {
     tobeupdatedPlace = await Place.findById(placeId);
   } catch (error) {
-    return next(error)
+    return next(error);
   }
 
   tobeupdatedPlace.title = title;
@@ -122,27 +113,33 @@ const updatePlace = async (req, res, next) => {
     return next(error);
   }
 
-
-
-
-  res.status(200).json({ place: tobeupdatedPlace.toObject({getters:true}) });
+  res.status(200).json({ place: tobeupdatedPlace.toObject({ getters: true }) });
 };
 
 const deletePlace = async (req, res, next) => {
   const placeId = req.params.pid;
   let place;
   try {
-    place = await Place.find.findById(placeId);
+    place = await Place.find.findById(placeId).populate("creator");
   } catch (error) {
     return next(error);
   }
 
- try {
-  await  place.remove()
- } catch (error) {
-  return next(error);
-}
- 
+  if (!place) {
+    const error = new Error("Could not fetch the place");
+    return next(error);
+  }
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await place.remove({ session: sess });
+    place.creator.places.pull(place);
+    await place.creator.save({ session: sess });
+    await sess.commitTransaction();
+  } catch (error) {
+    return next(error);
+  }
 
   res.status(200).json({ message: "Place deleted" });
 };
