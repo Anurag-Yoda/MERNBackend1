@@ -1,5 +1,6 @@
 const uuid =  require('uuid/dist/v4');
 const {validationResult} = require('express-validator');
+const Place = require('../models/place');
 
 let DUMMY_DATA = [
   {
@@ -9,16 +10,23 @@ let DUMMY_DATA = [
   },
 ];
 
-const getPlaceById = (req, res, next) => {
+const getPlaceById = async (req, res, next) => {
   const placeId = req.params.pid;
-  const place = DUMMY_DATA.find((p) => {
-    return p.id === placeId;
-  });
+  let place;
+  try {
+    place = await Place.findById(placeId);
+  } catch (error) {
 
-  if (!place) {
+    return next(error);
   }
+ if(!place){
+   const error = new Error('Could not find the place ');
+   error.code = 404;
+   return next(error);
+ }
+ 
 
-  res.json({ place: place });
+  res.json({ place: place.toObject({getters: true}) });
 };
 
 const getPlacesByUserId = (req, res, next) => {
@@ -35,7 +43,7 @@ const getPlacesByUserId = (req, res, next) => {
   res.json({ place: places });
 };
 
-const createPlace = (req, res, next) => {
+const createPlace = async (req, res, next) => {
 
   const errors = validationResult(req);
 
@@ -46,16 +54,25 @@ const createPlace = (req, res, next) => {
 
 
   const { title, description, coordinates, address, creator } = req.body;
-  const createdPlace = {
-    id:uuid(),
+  const createdPlace = new Place({
+    
     title,
     description,
     location: coordinates,
     address,
+    image:'https://cdn.britannica.com/82/183382-050-D832EC3A/Detail-head-crown-Statue-of-Liberty-New.jpg',
     creator,
-  };
+  });
 
-  DUMMY_DATA.push(createdPlace);
+  try {
+    await createdPlace.save();
+  } catch (error) {
+    console.log(error);
+    return next(error);
+  }
+
+
+
   res.status(201).json({place: createdPlace});
 };
 

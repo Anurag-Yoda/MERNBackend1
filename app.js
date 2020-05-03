@@ -1,7 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const userRoutes = require("./routes/users-routes");
+const usersRoutes = require("./routes/users-routes");
 const placesRoutes = require("./routes/places-routes");
+const mongoose = require("mongoose");
 
 const app = express();
 
@@ -24,4 +25,10 @@ app.use((error, req, res, next) => {
   res.json({ message: error.message || "An unknon error occured" });
 });
 
-app.listen(5000);
+mongoose
+  .connect('mongodb+srv://anurag:Kehkelunga_786@cluster0-sn3p1.mongodb.net/test?retryWrites=true&w=majority')
+  .then(() => {
+    console.log("Mongo Connected");
+    app.listen(5000);
+  })
+  .catch((err) => console.log(err));
