@@ -1,6 +1,8 @@
 const uuid = require("uuid/dist/v4");
 const { validationResult } = require("express-validator");
 const Place = require("../models/place");
+const User = require("../models/user");
+const mongoose = require('mongoose');
 
 let DUMMY_DATA = [
   {
@@ -66,9 +68,24 @@ const createPlace = async (req, res, next) => {
       "https://cdn.britannica.com/82/183382-050-D832EC3A/Detail-head-crown-Statue-of-Liberty-New.jpg",
     creator,
   });
+ let user;
+  try {
+    user = await User.findById(creator);
+  } catch (error) {
+    return next(error);
+  }
+  if(!user){
+    const error = new Error('Could not find the user for Provided it');
+    return next(error);
+  }
 
   try {
-    await createdPlace.save();
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await createdPlace.save({session : sess});
+    user.places.push(createdPlace);
+    await user.save({session:sess});
+    await sess.commitTransaction();
   } catch (error) {
     console.log(error);
     return next(error);

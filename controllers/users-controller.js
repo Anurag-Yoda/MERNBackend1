@@ -1,6 +1,7 @@
 const uuid = require("uuid/dist/v4");
 const { validationResult } = require("express-validator");
 const User = require("../models/user");
+const Place = require("../models/place");
 
 let DUMMY_DATA = [
   {
@@ -11,8 +12,18 @@ let DUMMY_DATA = [
   },
 ];
 
-const getUsers = (req, res, next) => {
-  res.json({ users: DUMMY_DATA });
+const getUsers = async (req, res, next) => {
+  
+  let users;
+  try {
+    users = await User.find({},'-password');
+  } catch (error) {
+    console.log('error in all user find');
+    return next(error);
+  }
+
+
+  res.json({ users: users.map(user => user.toObject({getters: true}))});
 };
 
 const signup = async (req, res, next) => {
@@ -22,7 +33,7 @@ const signup = async (req, res, next) => {
     const error = new Error("Invalid Input");
     return next(error);
   }
-  const { name, email, password, places} = req.body;
+  const { name, email, password} = req.body;
   let existingUser;
   try {
     existingUser = await User.findOne({ email: email });
@@ -40,7 +51,7 @@ const signup = async (req, res, next) => {
     email,
     image:"https://vignette.wikia.nocookie.net/godofwar/images/b/b3/Kratos_Mugshot.jpg/revision/latest?cb=20180826024705",
     password,
-    places,
+    places: [],
   });
 
   try {
